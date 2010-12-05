@@ -12,4 +12,6 @@ define('TMP_LOGFILE', '/tmp/tropo.txt');
 
 define('WEB_ROOT', '/madpub/');
 
+define('RECORDING_PATH', '/tmp/recordings/');
+
 ?>

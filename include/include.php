@@ -39,7 +39,8 @@ function askQuestion($question)
 				),
 				'voice' => $voice,
 				'name' => $question['key'],
-				'maxSilence' => 3,
+				'maxSilence' => 2,   // if they stop talking for 2 seconds it will end recording and move on
+				'beep' => FALSE,
 				'url' => 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . $question['key'] . '.json?record=1&session_id=' . session_id()
 			)
 		);
@@ -47,7 +48,7 @@ function askQuestion($question)
 	else
 	{
 		$tropo[] = array(
-			'ask' => array(
+			'record' => array(
 				'say' => array(
 					'value' => $question['prompt'],
 				),
@@ -57,12 +58,13 @@ function askQuestion($question)
 				'name' => $question['key'],
 				'choices' => array(
 					'value' => $choices
-				)
+				),
+				'beep' => FALSE,
+				'url' => 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . $question['key'] . '.json?record=1&session_id=' . session_id()
 			)
 		);
 	}
 }
-
 
 function tropoInput()
 {
@@ -86,9 +88,7 @@ function tropoInput()
 			echo 'JSON input' . "\n";
 			print_r($input);
 			echo "\n";
-		$fp = fopen('/tmp/tropo.txt', 'a');
-		fwrite($fp, ob_get_clean());
-		fclose($fp);
+		filedebug(ob_get_clean());
 	}
 	return $input;
 }
@@ -120,8 +120,8 @@ function db()
 		try {
 			$db = new PDO(PDO_DSN, PDO_USER, PDO_PASS);
 		} catch (PDOException $e) {
-		header('HTTP/1.1 500 Server Error');
-		die('Connection failed: ' . $e->getMessage());
+			header('HTTP/1.1 500 Server Error');
+			die('Connection failed: ' . $e->getMessage());
 		}
 	}
 	
@@ -164,11 +164,16 @@ function filedebug($obj)
 	
 	if(!isset($fp))
 		$fp = fopen(TMP_LOGFILE, 'a');
-	
-	ob_start();
-		print_r($obj);
-		echo "\n";
-	fwrite($fp, ob_get_clean());
+
+	if(is_array($obj) || is_object($obj))
+	{	
+		ob_start();
+			print_r($obj);
+			echo "\n";
+		fwrite($fp, ob_get_clean());
+	}
+	else
+		fwrite($fp, $obj . "\n");
 }
 
 /**

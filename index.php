@@ -2,15 +2,20 @@
 include('include/include.php');
 
 $input = tropoInput();
-/*
+
+// Tropo seems to not send the cookie with the recorded file, so we pass it in a query string parameter
+if(get('session_id'))
+	session_id($_GET['session_id']);
+
+session_start();
+
 if(is_object($input))
 {
 	if(property_exists($input, 'session'))
 	{
-		$sessionID = $input->session->id;
 		$_SESSION['session'] = $input->session;
 		$_SESSION['callerID'] = (@$input->session->from->id ? $input->session->from->id : '');
-		ircLog('Incoming call from ' . $_SESSION['callerID']);
+		ircdebug('Incoming call from ' . $_SESSION['callerID']);
 	}
 	else
 	{
@@ -19,7 +24,7 @@ if(is_object($input))
 }
 else
 	$sessionID = FALSE;
-*/
+
 
 $tropo = array();
 $voice = 'allison';
@@ -27,11 +32,27 @@ $voice = 'allison';
 switch(get('method'))
 {
 	case 'incoming':
-	case 'firstName':
-		include('app/' . get('method') . '.php');
+		include('survey.php');
+		
+		$query = db()->prepare('INSERT INTO `calls` (`date`, `callerID`, `sessionID`) VALUES(:date, :callerID, :sessionID)');
+		$query->bindValue(':date', date('Y-m-d H:i:s'));
+		$query->bindValue(':callerID', $_SESSION['callerID']);
+		$query->bindValue(':sessionID', session_id());
+		$query->execute();
+		$_SESSION['callID'] = db()->lastInsertId();
+
+		$tropo[] = array(
+			'say' => array(
+				'value' => '. . . ' . $firstPrompt,
+			),
+			'voice' => $voice
+		);
+		
+		askQuestion(array_shift($questions));
+
 		break;
 	default: 
-		include('app/question.php');
+		include('include/question.php');
 		break;
 }
 
@@ -42,18 +63,17 @@ header('Content-type: text/plain');
 if(get('test'))
 {
 	echo formatJSON($json);
-
-	if(isset($_SESSION))
-	{	
-		echo "\n\nSession:\n";
-		print_r($_SESSION);
-	}
 }
 else
 {
 	echo $json;
 }
 
+if(isset($_SESSION))
+{	
+	filedebug("\n\nSession:\n");
+	filedebug($_SESSION);
+}
 
 filedebug($json);
 

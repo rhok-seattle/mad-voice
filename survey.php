@@ -1,5 +1,7 @@
 <?php
 
+$firstPrompt = 'Thanks for calling the Mobile Assessment of Damage hotline.';
+
 $questions[] = array(
 	'key' => 'insurance',
 	'prompt' => 'Do you have insurance?',
