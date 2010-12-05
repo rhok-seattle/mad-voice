@@ -1,0 +1,2 @@
+RewriteEngine on
+RewriteRule (.+)\.json index.php?method=$1 [QSA,L]
