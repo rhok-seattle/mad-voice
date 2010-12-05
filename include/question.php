@@ -2,59 +2,41 @@
 
 $key = get('method');
 
-ircdebug($key);
-
 // Handle the successful response of the question
 
-if(get('record') || get('hadRecording') || ($val=tropoInputValue()) !== FALSE)
+if(get('record') || get('hadRecording') || (($responseValue = tropoInputValue()) !== FALSE))
 {
 	if(get('record') == 1)
 	{
 		// Handle uploaded recordings
-		$filename = md5(microtime(TRUE)) . '.wav';
-		$fullPath = RECORDING_PATH . $filename;
-		move_uploaded_file($_FILES['filename']['tmp_name'], $filename);
+		$filename = md5(microtime(TRUE)) . '.mp3';
+		$fullpath = RECORDING_PATH . $filename;
+		move_uploaded_file($_FILES['filename']['tmp_name'], $fullpath);
+
 		$_SESSION['recordings'][$key] = $filename;
 
 		// Attempt to update the record in the DB
-		$query = db()->prepare('UPDATE `responses` SET `recording` = :recording WHERE `callID` = :callID AND `name` = :name');
+		$query = db()->prepare('UPDATE `responses` SET `recording` = :recording WHERE `callID` = :callID AND `key` = :key');
 		$query->bindValue(':callID', $_SESSION['callID']);
-		$query->bindValue(':name', $key);
+		$query->bindValue(':key', $key);
 		$query->bindValue(':recording', $filename);
 		$query->execute();
 
 		// If no rows were updated, that means there wasn't already a row for this key, so insert it now
 		if($query->rowCount() == 0)
 		{
-			$query = db()->prepare('INSERT INTO `responses` (`callID`, `name`, `recording`) VALUES(:callID, :name, :recording)');
+			$query = db()->prepare('INSERT INTO `responses` (`callID`, `key`, `recording`) VALUES(:callID, :key, :recording)');
 			$query->bindValue(':callID', $_SESSION['callID']);
-			$query->bindValue(':name', $key);
+			$query->bindValue(':key', $key);
 			$query->bindValue(':recording', $filename);
 			$query->execute();
 		}
 
 		die();
 	}
-	elseif(isset($val))
+	elseif(isset($responseValue))
 	{
-		$_SESSION['responses'][$key] = $val;
-		
-		// Attempt to update the record in the DB
-		$query = db()->prepare('UPDATE `responses` SET `value` = :value WHERE `callID` = :callID AND `name` = :name');
-		$query->bindValue(':callID', $_SESSION['callID']);
-		$query->bindValue(':name', $key);
-		$query->bindValue(':value', $val);
-		$query->execute();
-
-		// If no rows were updated, that means there wasn't already a row for this key, so insert it now
-		if($query->rowCount() == 0)
-		{
-			$query = db()->prepare('INSERT INTO `responses` (`callID`, `name`, `value`) VALUES(:callID, :name, :value)');
-			$query->bindValue(':callID', $_SESSION['callID']);
-			$query->bindValue(':name', $key);
-			$query->bindValue(':value', $val);
-			$query->execute();
-		}
+		storeSurveyResponse($key, $responseValue);
 	}
 
 	// After processing the input, include the questions file so logic can happen in it based on the session values set above
@@ -62,11 +44,29 @@ if(get('record') || get('hadRecording') || ($val=tropoInputValue()) !== FALSE)
 
 	// Find the next question and ask it
 	foreach($questions as $i=>$q)
+	{
 		if($q['key'] == $key)
+		{
+			$thisQuestion = $q;
 			if(array_key_exists($i+1, $questions))
-				askQuestion($questions[$i+1]);
+				$nextQuestion = $questions[$i+1];
 			else
-				complete();
+				$nextQuestion = FALSE;
+		}
+	}
+
+	// If we got a valid response from the user, continue, otherwise ask them the same question again
+	if(get('hadRecording') || isset($responseValue))
+	{
+		if($nextQuestion)
+			askQuestion($nextQuestion);
+		else
+			complete();
+	}
+	else
+	{
+		askQuestion($thisQuestion, TRUE);
+	}
 }
 else
 {
@@ -78,6 +78,17 @@ else
 
 
 
+function getQuestionName($key)
+{
+	global $questions;
+	
+	foreach($questions as $q)
+		if($q['key'] == $key)
+			return $q['name'];
+	else
+		return FALSE;
+}
+
 
 function complete()
 {
@@ -87,6 +98,11 @@ function complete()
 		'say' => array('value'=>'The survey has been completed. Thanks.'),
 		'voice' => $voice
 	);
+	
+	$query = db()->prepare('UPDATE `calls` SET `dateFinished` = :date WHERE `sessionID` :id');
+	$query->bindParam(':id', session_id());
+	$query->bindParam(':date', date('Y-m-d H:i:s'));
+	$query->execute();
 }
 
 ?>

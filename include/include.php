@@ -1,7 +1,7 @@
 <?php
 include('config.php');
 
-function askQuestion($question)
+function askQuestion($question, $secondTry=FALSE)
 {
 	global $tropo, $voice;
 	
@@ -35,12 +35,13 @@ function askQuestion($question)
 		$tropo[] = array(
 			'record' => array(
 				'say' => array(
-					'value' => $question['prompt'],
+					'value' => $question[($secondTry && array_key_exists('prompt2', $question) ? 'prompt2' : 'prompt')],
 				),
 				'voice' => $voice,
 				'name' => $question['key'],
 				'maxSilence' => 2,   // if they stop talking for 2 seconds it will end recording and move on
 				'beep' => FALSE,
+				'format' => 'audio/mp3',
 				'url' => 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . $question['key'] . '.json?record=1&session_id=' . session_id()
 			)
 		);
@@ -50,7 +51,7 @@ function askQuestion($question)
 		$tropo[] = array(
 			'record' => array(
 				'say' => array(
-					'value' => $question['prompt'],
+					'value' => $question[($secondTry && array_key_exists('prompt2', $question) ? 'prompt2' : 'prompt')],
 				),
 				'voice' => $voice,
 				'bargein' => FALSE,
@@ -60,11 +61,66 @@ function askQuestion($question)
 					'value' => $choices
 				),
 				'beep' => FALSE,
+				'format' => 'audio/mp3',
 				'url' => 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . $question['key'] . '.json?record=1&session_id=' . session_id()
 			)
 		);
 	}
 }
+
+function storeSurveyResponse($key, $value)
+{
+	$_SESSION['responses'][$key] = $value;
+	
+	// Attempt to update the record in the DB
+	$query = db()->prepare('UPDATE `responses` SET `value` = :value WHERE `callID` = :callID AND `key` = :key');
+	$query->bindValue(':callID', $_SESSION['callID']);
+	$query->bindValue(':key', $key);
+	$query->bindValue(':value', $value);
+	$query->execute();
+
+	// If no rows were updated, that means there wasn't already a row for this key, so insert it now
+	if($query->rowCount() == 0)
+	{
+		$query = db()->prepare('INSERT INTO `responses` (`callID`, `key`, `value`) VALUES(:callID, :key, :value)');
+		$query->bindValue(':callID', $_SESSION['callID']);
+		$query->bindValue(':key', $key);
+		$query->bindValue(':value', $value);
+		$query->execute();
+	}
+}
+
+function getCountiesForZipcode($zip)
+{
+	switch($zip)
+	{
+		case 98683:
+			return array(53011=>'Clark');
+		case 98112:
+			return array(53033=>'King');
+		case 98111:
+			return array(53033=>'King', 53053=>'Pierce');
+		default:
+			return array(53033=>'King');
+	}
+}
+
+function getCitiesForZipcode($zip)
+{
+	switch($zip)
+	{
+		case 98683:
+			return array('Vancouver');
+		case 98112:
+			return array('Seattle');
+		case 98111:
+			return array('Seattle', 'Bellevue');
+		default:
+			return array('Seattle');
+	}
+}
+
+
 
 function tropoInput()
 {
@@ -146,6 +202,10 @@ function post($k)
 
 function surveyVal($k)
 {
+	// If we're not in the middle of a survey, respond with TRUE so the survey.php file runs all blocks
+	if(defined('VIEW_MODE'))
+		return TRUE;
+
 	if(array_key_exists('responses', $_SESSION) && array_key_exists($k, $_SESSION['responses']))
 		return $_SESSION['responses'][$k];
 	else

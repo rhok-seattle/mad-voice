@@ -1,8 +1,6 @@
 <?php
 define('VIEW_MODE', TRUE);
 
-include('include/include.php');
-
 include('include/header.php');
 
 if(get('id'))
@@ -27,7 +25,7 @@ if(get('id'))
 	include('survey.php');
 	$labels = array();
 	foreach($questions as $q)
-		$labels[$q['key']] = $q['name'];
+		$data[$q['key']] = $q;
 
 	$call = db()->prepare('SELECT * FROM `calls` WHERE `id` = :id');
 	$call->bindParam(':id', get('id'));
@@ -49,10 +47,22 @@ if(get('id'))
 	echo '<table>';
 	foreach($responses as $r)
 	{
+		if(array_key_exists('lookup', $data[$r['key']]))
+		{
+			$lookup = $data[$r['key']]['lookup'];
+			$query = db()->prepare('SELECT ' . $lookup['value'] . ' AS val FROM ' . $lookup['table'] . ' WHERE ' . $lookup['key'] . ' = :key');
+			$query->bindValue(':key', $r['value']);
+			$query->execute();
+			$value = $query->fetch(PDO::FETCH_ASSOC);
+			$value = $value['val'];
+		}
+		else
+			$value = $r['value'];
+	
 		echo '<tr>';
-			echo '<td>' . $labels[$r['key']] . '</td>';
-			echo '<td>' . $r['value'] . '</td>';
-			echo '<td><a href="recordings/' . $r['recording'] . '" id="recording_' . $r['id'] . '" class="recording">listen</a></td>';
+			echo '<td>' . (array_key_exists('name', $data[$r['key']]) ? $data[$r['key']]['name'] : $r['key']) . '</td>';
+			echo '<td>' . $value . '</td>';
+			echo '<td>' . ($r['recording'] ? '<a href="recordings/' . $r['recording'] . '" id="recording_' . $r['id'] . '" class="recording">listen</a>' : '') . '</td>';
 		echo '</tr>';
 	}
 	echo '</table>';

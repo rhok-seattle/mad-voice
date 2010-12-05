@@ -31,7 +31,12 @@ $voice = 'allison';
 
 switch(get('method'))
 {
+	case '':
+		include('view.php');
+		die();
+		break;
 	case 'incoming':
+		define('SURVEY_MODE', TRUE);
 		include('survey.php');
 		
 		$query = db()->prepare('INSERT INTO `calls` (`date`, `callerID`, `sessionID`) VALUES(:date, :callerID, :sessionID)');
@@ -52,6 +57,7 @@ switch(get('method'))
 
 		break;
 	default: 
+		define('SURVEY_MODE', TRUE);
 		include('include/question.php');
 		break;
 }
