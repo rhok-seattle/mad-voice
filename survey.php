@@ -1,7 +1,7 @@
 <?php
 
 $firstPrompt = 'Thanks for calling the Mobile Assessment of Damage hotline.';
-/*
+
 $questions[] = array(
 	'key' => 'name',
 	'name' => 'Name',
@@ -9,7 +9,7 @@ $questions[] = array(
 	'prompt2' => didntUnderstand() . 'What is your name?',
 	'choices' => '[RECORD]'
 );
-*/
+
 
 $questions[] = array(
 	'key' => 'postcode',
@@ -19,7 +19,7 @@ $questions[] = array(
 	'choices' => '[5 DIGITS]'
 );
 
-if(defined('SURVEY_MODE') && ($zip = surveyVal('postcode')) !== FALSE)
+if(defined('SURVEY_MODE') && ($zip = surveyVal('postcode')) !== FALSE && surveyVal('county') == FALSE)
 {
 	// Look up the counties for this zip code
 	$counties = getCountiesForZipcode($zip);
@@ -40,7 +40,9 @@ if(defined('SURVEY_MODE') && ($zip = surveyVal('postcode')) !== FALSE)
 	}
 	else
 	{
-		storeSurveyResponse('county', array_pop($counties));
+		$fips = array_pop(array_flip($counties));
+		storeSurveyResponse('county', $fips);
+		storeSurveyResponse('state', getStateForFIPS($fips));
 	}
 }
 else
@@ -52,6 +54,92 @@ else
 		'lookup' => array('table'=>'counties', 'key'=>'fips', 'value'=>'countyName')
 	);
 }
+
+$questions[] = array(
+	'key' => 'street1',
+	'name' => 'Address',
+	'prompt' => 'What is the address of the property?',
+	'prompt2' => didntUnderstand() . 'What is the address?',
+	'choices' => '[RECORD]'
+);
+
+
+$questions[] = array(
+	'key' => 'habitable',
+	'name' => 'Is Habitable?',
+	'prompt' => 'Is the property currently habitable?',
+	'prompt2' => didntUnderstand() . 'Please say yes or no.',
+	'choices' => '[BOOLEAN]'
+);
+
+$questions[] = array(
+	'key' => 'accessible',
+	'name' => 'Accessible?',
+	'prompt' => 'Is the property currently accessible?',
+	'prompt2' => didntUnderstand() . 'Please say yes or no.',
+	'choices' => '[BOOLEAN]'
+);
+
+
+
+$questions[] = array(
+	'key' => 'damagetoday',
+	'name' => 'Date of Damage',
+	'prompt' => 'Did the damage happen today?',
+	'prompt2' => didntUnderstand() . 'Was today the day the damage happened?',
+	'choices' => '[BOOLEAN]'
+);
+
+if(defined('SURVEY_MODE') && ($today = surveyVal('damagetoday')) !== FALSE)
+{
+	if($today)
+	{
+		storeSurveyResponse('date', date('Y-m-d'));
+	}
+	else
+	{
+		$questions[] = array(
+			'key' => 'date',
+			'name' => 'Date of Damage',
+			'prompt' => 'What day did the damage happen?',
+			'prompt2' => 'Please tell me the full date.',
+			'choices' => '[DATE]'
+		);
+	}
+}
+
+$questions[] = array(
+	'key' => 'damage_type',
+	'name' => 'Type of Damage',
+	'prompt' => 'What type of damage happened? You can say structural, roadway, or land.',
+	'prompt2' => didntUnderstand() . 'Please say structural, road, or land.',
+	'choices' => 'structural(structural, structure, building), roadway(roadway, road), land(land)'
+);
+
+$questions[] = array(
+	'key' => 'cause',
+	'name' => 'Primary Cause',
+	'prompt' => 'What was the primary cause of the damage? You can say things like fire, flood, earthquake, and others.',
+	'prompt2' => didntUnderstand() . 'The options are fire, flood, earthquake, wind, volcano, snow, ice, vandalism, other.',
+	'choices' => 'fire(fire), flood(flood), earthquake(earthquake), wind(wind), volcano(volcano), snow(snow), ice(ice), vandalism(vandalism), other(other)'
+);
+
+$questions[] = array(
+	'key' => 'description',
+	'name' => 'Description',
+	'prompt' => 'Please provide a brief description of the damages.',
+	'prompt2' => didntUnderstand(),
+	'choices' => '[RECORD]'
+);
+
+
+$questions[] = array(
+	'key' => 'owner',
+	'name' => 'Owner?',
+	'prompt' => 'Are you an owner or a renter?',
+	'prompt2' => didntUnderstand() . 'Do you own or rent?',
+	'choices' => '1(owner, own, 1, yes), 0(renter, rent, 2)'
+);
 
 $questions[] = array(
 	'key' => 'insurance',
@@ -72,14 +160,6 @@ if(surveyVal('insurance'))
 	);
 }
 
-
-$questions[] = array(
-	'key' => 'owner',
-	'name' => 'Owner?',
-	'prompt' => 'Are you an owner or a renter?',
-	'prompt2' => didntUnderstand() . 'Do you own or rent?',
-	'choices' => '1(owner, own, 1, yes), 0(renter, rent, 2)'
-);
 $questions[] = array(
 	'key' => 'eststructloss',
 	'name' => 'Est. Structural Damage',
@@ -87,6 +167,7 @@ $questions[] = array(
 	'prompt2' => didntUnderstand() . 'Say the dollar amount slowly',
 	'choices' => '[CURRENCY]'
 );
+
 $questions[] = array(
 	'key' => 'estperproploss',
 	'name' => 'Est. Personal Loss',

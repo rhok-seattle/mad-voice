@@ -47,7 +47,7 @@ if(get('id'))
 	echo '<table>';
 	foreach($responses as $r)
 	{
-		if(array_key_exists('lookup', $data[$r['key']]))
+		if(array_key_exists($r['key'], $data) && array_key_exists('lookup', $data[$r['key']]))
 		{
 			$lookup = $data[$r['key']]['lookup'];
 			$query = db()->prepare('SELECT ' . $lookup['value'] . ' AS val FROM ' . $lookup['table'] . ' WHERE ' . $lookup['key'] . ' = :key');
@@ -60,7 +60,7 @@ if(get('id'))
 			$value = $r['value'];
 	
 		echo '<tr>';
-			echo '<td>' . (array_key_exists('name', $data[$r['key']]) ? $data[$r['key']]['name'] : $r['key']) . '</td>';
+			echo '<td>' . (array_key_exists($r['key'], $data) && array_key_exists('name', $data[$r['key']]) ? $data[$r['key']]['name'] : $r['key']) . '</td>';
 			echo '<td>' . $value . '</td>';
 			echo '<td>' . ($r['recording'] ? '<a href="recordings/' . $r['recording'] . '" id="recording_' . $r['id'] . '" class="recording">listen</a>' : '') . '</td>';
 		echo '</tr>';
@@ -76,8 +76,8 @@ else
 		echo '<tr>';
 			echo '<td><a href="?id=' . $call['id'] . '">' . $call['date'] . '</a></td>';
 			echo '<td>' . $call['callerID'] . '</td>';
-			echo '<td>' . $call['dateFinished'] . '</td>';
-			echo '<td>' . ((strtotime($call['dateFinished']) - strtotime($call['date'])) / 60) . '</td>';
+			#echo '<td>' . $call['dateFinished'] . '</td>';
+			#echo '<td>' . ((strtotime($call['dateFinished']) - strtotime($call['date'])) / 60) . '</td>';
 		echo '</tr>';
 	}
 	echo '</table>';

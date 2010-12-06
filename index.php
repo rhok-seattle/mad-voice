@@ -56,6 +56,11 @@ switch(get('method'))
 		askQuestion(array_shift($questions));
 
 		break;
+	case 'hangup':
+		if(defined('REMOTE_UPLOAD_SERVER') && REMOTE_UPLOAD_SERVER)
+			sendCallToServer($_SESSION['callID'], REMOTE_UPLOAD_SERVER);
+		ircdebug('Call completed');
+		break;
 	default: 
 		define('SURVEY_MODE', TRUE);
 		include('include/question.php');
@@ -74,12 +79,13 @@ else
 {
 	echo $json;
 }
-
+/*
 if(isset($_SESSION))
 {	
 	filedebug("\n\nSession:\n");
 	filedebug($_SESSION);
 }
+*/
 
 filedebug($json);
 

@@ -74,6 +74,7 @@ else
 		'say' => array('value'=>'Sorry, there was an error. Goodbye.'),
 		'voice' => $voice
 	);
+	sendCurrentCall();
 }
 
 

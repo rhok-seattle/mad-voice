@@ -29,6 +29,12 @@ function askQuestion($question, $secondTry=FALSE)
 			'next' => $question['key'] . '.json'
 		)
 	);
+	$tropo[] = array(
+		'on' => array(
+			'event' => 'hangup',
+			'next' => 'hangup.json'
+		)
+	);
 
 	if($question['choices'] == '[RECORD]')
 	{
@@ -48,8 +54,7 @@ function askQuestion($question, $secondTry=FALSE)
 	}
 	else
 	{
-		$tropo[] = array(
-			'record' => array(
+		$ask = array(
 				'say' => array(
 					'value' => $question[($secondTry && array_key_exists('prompt2', $question) ? 'prompt2' : 'prompt')],
 				),
@@ -63,7 +68,12 @@ function askQuestion($question, $secondTry=FALSE)
 				'beep' => FALSE,
 				'format' => 'audio/mp3',
 				'url' => 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . $question['key'] . '.json?record=1&session_id=' . session_id()
-			)
+			);
+		if(array_key_exists('minConfidence', $question))
+			$ask['minConfidence'] = $question['minConfidence'];
+	
+		$tropo[] = array(
+			'record' => $ask
 		);
 	}
 }
@@ -92,19 +102,20 @@ function storeSurveyResponse($key, $value)
 
 function getCountiesForZipcode($zip)
 {
-	switch($zip)
-	{
-		case 98683:
-			return array(53011=>'Clark');
-		case 98112:
-			return array(53033=>'King');
-		case 98111:
-			return array(53033=>'King', 53053=>'Pierce');
-		default:
-			return array(53033=>'King');
-	}
+	$query = db()->prepare('
+		SELECT cz.fips, countyName
+		FROM countyZipcodes cz
+		JOIN counties c ON cz.fips = c.fips
+		WHERE zip = :zip');
+	$query->bindParam(':zip', $zip);
+	$query->execute();
+	$results = array();
+	while($row = $query->fetch(PDO::FETCH_ASSOC))
+		$results[$row['fips']] = $row['countyName'];
+	return $results;
 }
 
+// TODO: Find and import cities/zip data from Tiger/Line Census data
 function getCitiesForZipcode($zip)
 {
 	switch($zip)
@@ -120,7 +131,58 @@ function getCitiesForZipcode($zip)
 	}
 }
 
+function getStateForFips($fips)
+{
+	$query = db()->prepare('
+		SELECT state
+		FROM counties
+		WHERE fips = :fips');
+	$query->bindParam(':fips', $fips);
+	$query->execute();
+	$result = $query->fetch();
+	return $result['state'];
+}
 
+
+function sendCallToServer($id, $url)
+{
+	// Gather up all the responses and send them off to the server
+	$responses = db()->prepare('SELECT * FROM responses WHERE callID = :id');
+	$responses->bindParam($id);
+	$responses->execute();
+	
+	$data = array();
+	while($row = $responses->fetch(PDO::FETCH_ASSOC))
+		$data[$row['key']] = $row;
+	
+	$params = array();
+	$params['first_name'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['name']['recording'];
+	$params['street1'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['street1']['recording'];
+	$params['county'] = @$data['county']['value'];
+	$params['postcode'] = @$data['postcode']['value'];
+	$params['is_owner'] = @$data['owner']['value'];
+	$params['damage_date'] = @$data['date']['value'];
+	$params['eststructloss'] = @str_replace('USD', '', $data['eststructloss']['value']);
+	$params['estperproploss'] = @str_replace('USD', '', $data['estperproploss']['value']);
+	$params['cause'] = @$data['cause']['value'];
+	$params['is_habitable'] = @$data['habitable']['value'];
+	$params['is_accessible'] = @$data['accessible']['value'];
+	$params['damage'] = @$data['damage_type']['value'];
+	$params['description'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . @$data['description']['recording'];
+	$params['insurance'] = @$data['insurance']['value'];
+	$params['provider'] = @$data['provider']['value'];
+	$params['source'] = 'voice';
+
+	ircdebug('Sending form data');
+
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_POST, TRUE);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+	$response = curl_exec($ch);
+	filedebug($response);
+}
 
 function tropoInput()
 {
