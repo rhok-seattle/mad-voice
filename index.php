@@ -37,7 +37,6 @@ switch(get('method'))
 		break;
 	case 'incoming':
 		define('SURVEY_MODE', TRUE);
-		include('survey.php');
 		
 		$query = db()->prepare('INSERT INTO `calls` (`date`, `callerID`, `sessionID`) VALUES(:date, :callerID, :sessionID)');
 		$query->bindValue(':date', date('Y-m-d H:i:s'));
@@ -45,6 +44,8 @@ switch(get('method'))
 		$query->bindValue(':sessionID', session_id());
 		$query->execute();
 		$_SESSION['callID'] = db()->lastInsertId();
+
+		include('survey.php');
 
 		$tropo[] = array(
 			'say' => array(

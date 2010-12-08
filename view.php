@@ -5,6 +5,11 @@ include('include/header.php');
 
 if(get('id'))
 {
+	if(get('send') == 1)
+	{
+		sendCallToServer(get('id'), REMOTE_UPLOAD_SERVER);
+	}
+
 ?>
 
 <div id="jquery_jplayer"></div>
@@ -32,8 +37,8 @@ if(get('id'))
 	$call->execute();
 	$call = $call->fetch(PDO::FETCH_ASSOC);
 
-	echo '<table>';
-		echo '<tr><td>Date:</td><td>' . $call['date'] . '</td></tr>';
+	echo '<table class="callDetails">';
+		echo '<tr><td>Date:</td><td>' . date('F j, Y g:ia', strtotime($call['date'])) . '</td></tr>';
 		echo '<tr><td>Caller ID:</td><td>' . $call['callerID'] . '</td></tr>';
 	echo '</table>';
 	
@@ -44,7 +49,7 @@ if(get('id'))
 	while($q = $query->fetch(PDO::FETCH_ASSOC))
 		$responses[$q['key']] = $q;
 
-	echo '<table>';
+	echo '<table class="responses" cellpadding="0" cellspacing="0">';
 	foreach($responses as $r)
 	{
 		if(array_key_exists($r['key'], $data) && array_key_exists('lookup', $data[$r['key']]))
@@ -60,9 +65,9 @@ if(get('id'))
 			$value = $r['value'];
 	
 		echo '<tr>';
-			echo '<td>' . (array_key_exists($r['key'], $data) && array_key_exists('name', $data[$r['key']]) ? $data[$r['key']]['name'] : $r['key']) . '</td>';
-			echo '<td>' . $value . '</td>';
-			echo '<td>' . ($r['recording'] ? '<a href="recordings/' . $r['recording'] . '" id="recording_' . $r['id'] . '" class="recording">listen</a>' : '') . '</td>';
+			echo '<td class="key">' . (array_key_exists($r['key'], $data) && array_key_exists('name', $data[$r['key']]) ? $data[$r['key']]['name'] : $r['key']) . '</td>';
+			echo '<td class="value">' . $value . '</td>';
+			echo '<td class="listen">' . ($r['recording'] ? '<a href="recordings/' . $r['recording'] . '" id="recording_' . $r['id'] . '" class="recording">listen</a>' : '') . '</td>';
 		echo '</tr>';
 	}
 	echo '</table>';

@@ -2,6 +2,61 @@
 
 $firstPrompt = 'Thanks for calling the Mobile Assessment of Damage hotline.';
 
+/*
+ * TODO: resume a past session by entering a reference number
+ 
+$questions[] = array(
+	'key' => 'hasreferencenumber',
+	'name' => 'Reference Number',
+	'prompt' => 'Do you already have a reference number?',
+	'prompt2' => didntUnderstand() . 'Do you want to continue a past session by entering a reference number?',
+	'choices' => '[BOOLEAN]'
+);
+
+if(defined('SURVEY_MODE') && ($callID = surveyVal('hasreferencenumber')) !== FALSE)
+{
+	if($callID)
+	{
+		// Resume a previous session
+	}
+	else
+	{
+		$questions[] = array(
+			'key' => 'referencenumber',
+			'name' => 'Reference Number',
+			'prompt' => 'What is your reference number?',
+			'prompt2' => 'Please speak the digits of your reference number.',
+			'choices' => '[DIGITS]'
+		);
+	}
+}
+ */
+
+if(defined('SURVEY_MODE'))
+{
+	$refnum = implode(' ', str_split($_SESSION['callID']));
+	
+	$firstPrompt .= ' If we get disconnected, you can continue this call by entering the following reference number. . ';
+	// TODO: Say "Please say ok when you have a pen and paper ready." and wait for up to 60 seconds rather than the default 10
+	$firstPrompt .= ' Your reference number is ' . $refnum . '. Once again, that number is ' . $refnum . '.';
+}
+
+$questions[] = array(
+	'key' => 'wanttohearinstructions',
+	'name' => 'Want to hear instructions?',
+	'prompt' => 'Do you want to know what questions we are going to ask you?',
+	'prompt2' => didntUnderstand() . 'Please say yes or no.',
+	'choices' => '[BOOLEAN]'
+);
+
+if(defined('SURVEY_MODE') && surveyVal('wanttohearinstructions') !== FALSE)
+{
+	$questions[] = array(
+		'say' => 'You will need to know the zip code of the damaged property, the primary cause of damage, your insurance provider, if any, and the estimated dollar amount of damages, and a few other questions. Let\'s get started.'
+	);
+}
+
+
 $questions[] = array(
 	'key' => 'name',
 	'name' => 'Name',

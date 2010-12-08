@@ -45,11 +45,14 @@ if(get('record') || get('hadRecording') || (($responseValue = tropoInputValue())
 	// Find the next question and ask it
 	foreach($questions as $i=>$q)
 	{
-		if($q['key'] == $key)
+		if(array_key_exists('key', $q) && $q['key'] == $key)
 		{
 			$thisQuestion = $q;
 			if(array_key_exists($i+1, $questions))
-				$nextQuestion = $questions[$i+1];
+			{
+				$nextQuestionIndex = $i + 1;
+				$nextQuestion = $questions[$i + 1];
+			}
 			else
 				$nextQuestion = FALSE;
 		}
@@ -59,7 +62,19 @@ if(get('record') || get('hadRecording') || (($responseValue = tropoInputValue())
 	if(get('hadRecording') || isset($responseValue))
 	{
 		if($nextQuestion)
+		{
+			if(array_key_exists('say', $nextQuestion))
+			{
+				$tropo[] = array(
+					'say' => array(
+						'value' => $nextQuestion['say']
+					),
+					'voice' => $voice
+				);
+				$nextQuestion = $questions[$nextQuestionIndex + 1];
+			}
 			askQuestion($nextQuestion);
+		}
 		else
 			complete();
 	}

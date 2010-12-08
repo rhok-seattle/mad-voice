@@ -148,16 +148,21 @@ function sendCallToServer($id, $url)
 {
 	// Gather up all the responses and send them off to the server
 	$responses = db()->prepare('SELECT * FROM responses WHERE callID = :id');
-	$responses->bindParam($id);
+	$responses->bindParam(':id', $id);
 	$responses->execute();
+	
+	$call = db()->prepare('SELECT * FROM calls WHERE id = :id');
+	$call->bindParam(':id', $id);
+	$call->execute();
+	$call = $call->fetch();
 	
 	$data = array();
 	while($row = $responses->fetch(PDO::FETCH_ASSOC))
 		$data[$row['key']] = $row;
 	
 	$params = array();
-	$params['first_name'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['name']['recording'];
-	$params['street1'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['street1']['recording'];
+	$params['first_name'] = @($data['name']['recording'] ? 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['name']['recording'] : '');
+	$params['street1'] = @($data['street1']['recording'] ? 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . $data['street1']['recording'] : '');
 	$params['county'] = @$data['county']['value'];
 	$params['postcode'] = @$data['postcode']['value'];
 	$params['is_owner'] = @$data['owner']['value'];
@@ -168,13 +173,17 @@ function sendCallToServer($id, $url)
 	$params['is_habitable'] = @$data['habitable']['value'];
 	$params['is_accessible'] = @$data['accessible']['value'];
 	$params['damage'] = @$data['damage_type']['value'];
-	$params['description'] = @'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . @$data['description']['recording'];
+	$params['description'] = @($data['description']['recording'] ? 'http://' . $_SERVER['SERVER_NAME'] . WEB_ROOT . 'recordings/' . @$data['description']['recording'] : '');
 	$params['insurance'] = @$data['insurance']['value'];
 	$params['provider'] = @$data['provider']['value'];
+	$params['phone'] = $call['callerID'];
+	$params['preferred'] = 'landline-phone';
 	$params['source'] = 'voice';
 
-	ircdebug('Sending form data');
-
+	#ircdebug('Sending form data');
+	
+	filedebug($params);
+	/*
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_POST, TRUE);
@@ -182,6 +191,7 @@ function sendCallToServer($id, $url)
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 	$response = curl_exec($ch);
 	filedebug($response);
+	*/
 }
 
 function tropoInput()
